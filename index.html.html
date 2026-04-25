@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dossiê Técnico — GMV por Operadora | Cannect</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0d14;
+    --surface: #111520;
+    --surface2: #161b2a;
+    --border: #1e2640;
+    --accent: #00e5a0;
+    --accent2: #4f8eff;
+    --accent3: #ff6b6b;
+    --accent4: #f5c542;
+    --text: #e8eaf2;
+    --text-muted: #6b7494;
+    --text-dim: #3a4060;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* NOISE TEXTURE */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ---- HERO ---- */
+  .hero {
+    position: relative;
+    padding: 60px 64px 48px;
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .hero::after {
+    content: '';
+    position: absolute;
+    top: -80px; right: -120px;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(0,229,160,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .hero-label::before {
+    content: '';
+    display: inline-block;
+    width: 24px; height: 1px;
+    background: var(--accent);
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(36px, 5vw, 64px);
+    font-weight: 800;
+    line-height: 1.0;
+    letter-spacing: -2px;
+    color: var(--text);
+  }
+  h1 em {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .hero-meta {
+    margin-top: 20px;
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+  }
+  .meta-item { display: flex; flex-direction: column; gap: 4px; }
+  .meta-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); }
+  .meta-value { font-size: 13px; color: var(--text); }
+
+  /* ---- KPI STRIP ---- */
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .kpi-card {
+    padding: 28px 32px;
+    border-right: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-card:last-child { border-right: none; }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .kpi-card.green::before { background: var(--accent); }
+  .kpi-card.blue::before { background: var(--accent2); }
+  .kpi-card.red::before { background: var(--accent3); }
+  .kpi-card.yellow::before { background: var(--accent4); }
+
+  .kpi-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+  .kpi-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -1px;
+  }
+  .kpi-card.green .kpi-value { color: var(--accent); }
+  .kpi-card.blue .kpi-value { color: var(--accent2); }
+  .kpi-card.red .kpi-value { color: var(--accent3); }
+  .kpi-card.yellow .kpi-value { color: var(--accent4); }
+  .kpi-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+  /* ---- CONTENT ---- */
+  .content { padding: 0 64px 80px; }
+
+  .section {
+    margin-top: 56px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-num {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+  }
+  h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  .chart-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 28px;
+    position: relative;
+  }
+
+  .chart-title {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+  }
+
+  /* ---- OPERATOR GRID ---- */
+  .op-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .op-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+    transition: border-color 0.2s;
+  }
+  .op-card:hover { border-color: var(--accent2); }
+
+  .op-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    gap: 12px;
+  }
+  .op-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--text);
+    flex: 1;
+  }
+  .op-total {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .op-chart-wrap { height: 120px; }
+
+  /* ---- DROPS TABLE ---- */
+  .drops-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .drops-table th {
+    text-align: left;
+    padding: 10px 16px;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .drops-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .drops-table tr:last-child td { border-bottom: none; }
+  .drops-table tr:hover td { background: var(--surface2); }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 2px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+  }
+  .badge-red { background: rgba(255,107,107,0.15); color: var(--accent3); }
+  .badge-yellow { background: rgba(245,197,66,0.12); color: var(--accent4); }
+  .badge-green { background: rgba(0,229,160,0.12); color: var(--accent); }
+
+  .pct-down { color: var(--accent3); font-weight: 500; }
+  .pct-up { color: var(--accent); font-weight: 500; }
+
+  /* ---- NARRATIVE ---- */
+  .narrative-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .narrative-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent2);
+    border-radius: 0 4px 4px 0;
+    padding: 20px 24px;
+  }
+  .narrative-block.warn { border-left-color: var(--accent3); }
+  .narrative-block.ok { border-left-color: var(--accent); }
+  .narrative-block.caution { border-left-color: var(--accent4); }
+
+  .nb-label {
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .nb-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+  .nb-body {
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--text-muted);
+  }
+  .nb-body strong { color: var(--text); font-weight: 500; }
+
+  /* ---- RANKING BAR ---- */
+  .ranking-list { display: flex; flex-direction: column; gap: 8px; }
+  .rank-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .rank-num { font-size: 10px; color: var(--text-dim); width: 20px; text-align: right; flex-shrink: 0; }
+  .rank-name { font-size: 12px; color: var(--text); width: 260px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rank-bar-wrap { flex: 1; background: var(--surface2); height: 6px; border-radius: 2px; overflow: hidden; }
+  .rank-bar { height: 100%; border-radius: 2px; background: var(--accent2); transition: width 0.4s; }
+  .rank-val { font-size: 11px; color: var(--accent); white-space: nowrap; }
+
+  /* ---- FOOTER ---- */
+  .footer {
+    margin-top: 60px;
+    padding: 24px 64px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+
+  @media (max-width: 900px) {
+    .hero, .content { padding-left: 24px; padding-right: 24px; }
+    .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+    .op-grid { grid-template-columns: 1fr; }
+    .narrative-grid { grid-template-columns: 1fr; }
+    .footer { padding: 20px 24px; flex-direction: column; gap: 8px; text-align: center; }
+    .rank-name { width: 140px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-label">Dossiê Técnico · Confidencial</div>
+  <h1>GMV por <em>Operadora</em><br>Cannect · 2024–2026</h1>
+  <div class="hero-meta">
+    <div class="meta-item"><span class="meta-label">Período</span><span class="meta-value">Mar 2024 → Abr 2026</span></div>
+    <div class="meta-item"><span class="meta-label">Total de Registros</span><span class="meta-value">972 transações</span></div>
+    <div class="meta-item"><span class="meta-label">Operadoras Ativas</span><span class="meta-value">35 parceiros</span></div>
+    <div class="meta-item"><span class="meta-label">Gerado em</span><span class="meta-value">Abril 2026</span></div>
+  </div>
+</header>
+
+<!-- KPIs -->
+<div class="kpi-strip">
+  <div class="kpi-card green">
+    <div class="kpi-label">GMV Total Acumulado</div>
+    <div class="kpi-value">R$ 28,9M</div>
+    <div class="kpi-sub">Mar/2024 → Abr/2026</div>
+  </div>
+  <div class="kpi-card blue">
+    <div class="kpi-label">Maior Mês</div>
+    <div class="kpi-value">R$ 1,97M</div>
+    <div class="kpi-sub">Novembro 2024</div>
+  </div>
+  <div class="kpi-card red">
+    <div class="kpi-label">Menor Mês (excl. início)</div>
+    <div class="kpi-value">R$ 487K</div>
+    <div class="kpi-sub">Janeiro 2026 ↓ 53%</div>
+  </div>
+  <div class="kpi-card yellow">
+    <div class="kpi-label">Maior Operadora</div>
+    <div class="kpi-value">Sul América</div>
+    <div class="kpi-sub">R$ 6,5M acumulado</div>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<main class="content">
+
+  <!-- SECTION 1: GMV MENSAL TOTAL -->
+  <section class="section">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <h2>GMV Mensal Consolidado — Todas as Operadoras</h2>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">Evolução do Volume Bruto de Vendas · R$ / mês</div>
+      <canvas id="chartTotal" height="90"></canvas>
+    </div>
+  </section>
+
+  <!-- SECTION 2: ANÁLISE DE QUEDAS -->
+  <section class="section">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <h2>Momentos Críticos e Quedas Identificadas</h2>
+    </div>
+    <div class="chart-box" style="padding: 0;">
+      <table class="drops-table">
+        <thead>
+          <tr>
+            <th>Período</th>
+            <th>GMV Mês Anterior</th>
+            <th>GMV no Mês</th>
+            <th>Variação</th>
+            <th>Severidade</th>
+            <th>Principal Causa</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Jul → Ago 2024</strong></td>
+            <td>R$ 1.563.340</td>
+            <td>R$ 996.709</td>
+            <td class="pct-down">▼ 36,2%</td>
+            <td><span class="badge badge-red">Crítica</span></td>
+            <td>Queda de Sul América (−R$ 347K) e Unimed CNU (−R$ 344K)</td>
+          </tr>
+          <tr>
+            <td><strong>Nov → Dez 2024</strong></td>
+            <td>R$ 1.968.465</td>
+            <td>R$ 959.364</td>
+            <td class="pct-down">▼ 51,3%</td>
+            <td><span class="badge badge-red">Crítica</span></td>
+            <td>Ephárma zerou (era R$ 998K em Nov); padrão de pagamento em lote</td>
+          </tr>
+          <tr>
+            <td><strong>Dez 2024 → Jan 2025</strong></td>
+            <td>R$ 959.364</td>
+            <td>R$ 857.047</td>
+            <td class="pct-down">▼ 10,6%</td>
+            <td><span class="badge badge-yellow">Moderada</span></td>
+            <td>Sazonalidade de início de ano; Ephárma ainda zerada</td>
+          </tr>
+          <tr>
+            <td><strong>Mar → Abr 2025</strong></td>
+            <td>R$ 1.717.270</td>
+            <td>R$ 1.358.841</td>
+            <td class="pct-down">▼ 20,9%</td>
+            <td><span class="badge badge-yellow">Moderada</span></td>
+            <td>Sul América caiu de R$ 846K para R$ 15K no mês</td>
+          </tr>
+          <tr>
+            <td><strong>Jul → Ago 2025</strong></td>
+            <td>R$ 1.842.176</td>
+            <td>R$ 1.373.728</td>
+            <td class="pct-down">▼ 25,4%</td>
+            <td><span class="badge badge-yellow">Moderada</span></td>
+            <td>Ephárma caiu de R$ 914K para R$ 189K; Unimed Vitória zerou</td>
+          </tr>
+          <tr>
+            <td><strong>Ago → Set 2025</strong></td>
+            <td>R$ 1.373.728</td>
+            <td>R$ 1.011.867</td>
+            <td class="pct-down">▼ 26,3%</td>
+            <td><span class="badge badge-red">Crítica</span></td>
+            <td>Ephárma desabou para R$ 40K; combinação de múltiplas quedas</td>
+          </tr>
+          <tr>
+            <td><strong>Nov → Dez 2025</strong></td>
+            <td>R$ 1.382.880</td>
+            <td>R$ 1.036.245</td>
+            <td class="pct-down">▼ 25,1%</td>
+            <td><span class="badge badge-yellow">Moderada</span></td>
+            <td>Padrão sazonal de fechamento de ano; SAMP zerou</td>
+          </tr>
+          <tr>
+            <td><strong>Dez 2025 → Jan 2026</strong></td>
+            <td>R$ 1.036.245</td>
+            <td>R$ 487.083</td>
+            <td class="pct-down">▼ 53,0%</td>
+            <td><span class="badge badge-red">Crítica</span></td>
+            <td>Queda generalizada; Ephárma mínima, Unimed Vitória e SAMP zeradas</td>
+          </tr>
+          <tr>
+            <td><strong>Mar → Abr 2026</strong></td>
+            <td>R$ 1.440.237</td>
+            <td>R$ 141.413</td>
+            <td class="pct-down">▼ 90,2%</td>
+            <td><span class="badge badge-yellow">Parcial*</span></td>
+            <td>Mês em curso (dados até 15/04); análise prematura</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- SECTION 3: RANKING -->
+  <section class="section">
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <h2>Ranking de Operadoras por GMV Acumulado</h2>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">Top 17 Operadoras · GMV Total no Período (R$)</div>
+      <canvas id="chartRanking" height="120"></canvas>
+    </div>
+  </section>
+
+  <!-- SECTION 4: OPERADORAS INDIVIDUAIS -->
+  <section class="section">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <h2>Evolução Mensal por Operadora</h2>
+    </div>
+    <div class="op-grid" id="opGrid"></div>
+  </section>
+
+  <!-- SECTION 5: INSIGHTS NARRATIVOS -->
+  <section class="section">
+    <div class="section-header">
+      <span class="section-num">05</span>
+      <h2>Análise Estratégica e Insights</h2>
+    </div>
+    <div class="narrative-grid">
+      <div class="narrative-block warn">
+        <div class="nb-label">Concentração de Risco</div>
+        <div class="nb-title">Sul América + Ephárma = 36% do GMV Total</div>
+        <div class="nb-body">
+          As duas maiores operadoras — <strong>Sul América (R$ 6,5M)</strong> e <strong>Ephárma (R$ 3,9M)</strong> — respondem por 36% de todo o volume do período. Quando essas operadoras entram em retração, o efeito cascata sobre o GMV mensal é devastador, como observado em <strong>Nov/Dez 2024</strong> (Ephárma) e <strong>Jan 2026</strong> (ambas em baixa).
+        </div>
+      </div>
+      <div class="narrative-block warn">
+        <div class="nb-label">Padrão de Pagamento em Lote</div>
+        <div class="nb-title">Ephárma: Ciclos Irregulares de Faturamento</div>
+        <div class="nb-body">
+          A Ephárma exibe um comportamento atípico: <strong>picos massivos em meses isolados</strong> (R$ 998K em Nov/24, R$ 914K em Jul/25, R$ 960K em Out/25) seguidos de meses com zero ou mínima receita. Esse padrão indica <strong>liquidações em lote de ciclos acumulados</strong>, gerando alta volatilidade no GMV mensal que dificulta previsões.
+        </div>
+      </div>
+      <div class="narrative-block ok">
+        <div class="nb-label">Operadora Mais Consistente</div>
+        <div class="nb-title">Sul América: Base Sólida, Porém Volátil</div>
+        <div class="nb-body">
+          Sul América é a operadora mais presente ao longo do período, com <strong>receita em 22 dos 23 meses</strong> analisados. No entanto, o volume oscila amplamente — de R$ 15K (Abr/25) a R$ 846K (Mar/25). Os meses de <strong>Set/24</strong> e <strong>Out/25</strong> registraram quedas abruptas, sugerindo renegociações ou pausas de contrato.
+        </div>
+      </div>
+      <div class="narrative-block caution">
+        <div class="nb-label">Operadoras Pontuais</div>
+        <div class="nb-title">SAMP, Hospital Ana Costa, Greens: Picos sem Continuidade</div>
+        <div class="nb-body">
+          <strong>SAMP</strong> gerou R$ 726K em Mai/25 e R$ 512K em Nov/25 — e zerou todos os outros meses. <strong>Hospital Ana Costa</strong> aparece em apenas 6 meses no período inteiro. <strong>Greens</strong> concentrou R$ 1,49M em apenas 4 meses. Essas operadoras aumentam o GMV pontualmente mas <strong>não contribuem para estabilidade de receita</strong>.
+        </div>
+      </div>
+      <div class="narrative-block warn">
+        <div class="nb-label">Alerta Crítico</div>
+        <div class="nb-title">Janeiro 2026: Pior Mês desde o Início Operacional</div>
+        <div class="nb-body">
+          Com <strong>R$ 487K</strong>, janeiro de 2026 foi o pior mês completo da história da Cannect — 53% abaixo de dezembro/25. A queda foi generalizada: <strong>Unimed Vitória, SAMP e FLEX</strong> zeraram; Sul América e Ephárma operaram com mínimo. O mês de <strong>fev/26 e mar/26</strong> mostram recuperação parcial (~R$ 813K e R$ 1,44M), mas ainda abaixo do patamar histórico.
+        </div>
+      </div>
+      <div class="narrative-block ok">
+        <div class="nb-label">Tendência</div>
+        <div class="nb-title">Recuperação em Mar/2026 Sinaliza Normalização</div>
+        <div class="nb-body">
+          Após a crise de Jan/26, o GMV de <strong>março/26 voltou a R$ 1,44M</strong> — nível compatível com a média histórica de 2025 (~R$ 1,38M/mês). Sul América retornou ao patamar de R$ 263K e Humana apresentou <strong>um dos seus maiores volumes</strong> com R$ 512K (provavelmente lote acumulado). O mês de abril ainda está em aberto.
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <span>CANNECT · DOSSIÊ TÉCNICO GMV</span>
+  <span>DADOS: Mar 2024 – Abr 2026 · 972 REGISTROS · 35 OPERADORAS</span>
+  <span>GERADO AUTOMATICAMENTE</span>
+</footer>
+
+<script>
+const DATA = {
+  months: ["Mar/24","Jul/24","Ago/24","Set/24","Out/24","Nov/24","Dez/24","Jan/25","Fev/25","Mar/25","Abr/25","Mai/25","Jun/25","Jul/25","Ago/25","Set/25","Out/25","Nov/25","Dez/25","Jan/26","Fev/26","Mar/26","Abr/26"],
+  total: [185533.76,1563340.76,996709.85,941325.3,1123777.15,1968465.68,959364.03,857047.66,1400097.36,1717270.11,1358841.94,1546902.24,1448979.29,1842176.28,1373728.76,1011867.34,1393423.8,1382880.26,1036245.49,487083.28,813842.45,1440237.13,141413.8],
+  operators: {
+    "Sul América": [0,618571,271593,23106,377095,378682,406275,170486,330705,846321,15604,345817,110295,517853,429126,522746,99507,93451,423334,95275,109774,263008,51214],
+    "Ephárma": [0,55994,241253,78931,65567,998312,21998,0,0,0,0,0,58902,914242,189596,40059,960058,92270,61676,8494,52815,47898,16705],
+    "Unimed CNU": [0,412745,68223,175094,30441,70342,0,29427,158938,42102,237510,16946,27817,66000,224016,296472,61023,186822,12799,110405,109381,189129,8183],
+    "Prevent Senior": [0,197201,128553,154494,112512,44267,185585,42302,229595,6160,129313,113307,130461,7353,129213,2215,155180,35302,59550,2345,151552,2345,62141],
+    "Unimed Seguradora": [0,64350,191097,0,73493,0,87737,189494,23712,30405,120138,166177,143886,62468,12045,18177,30651,113599,272347,79489,15174,36614,0],
+    "Unimed Vitória": [0,0,0,281980,104118,0,0,0,146769,245685,59697,0,445129,153388,0,111756,0,0,0,98580,0,0,0],
+    "Greens Fito.": [0,0,0,0,0,0,0,240869,444391,95775,0,0,0,0,0,0,0,0,0,0,318267,386905,0],
+    "Hospital Ana Costa": [0,210169,0,215994,0,0,222843,0,0,0,268014,0,0,0,268014,0,0,268014,0,0,0,0,0],
+    "SAMP": [0,0,0,0,0,0,0,0,0,0,0,726862,0,0,0,0,0,512836,0,0,0,0,0],
+    "Humana Saúde": [0,215,0,0,203508,458413,0,0,956,3404,140,17996,27396,3409,0,0,3193,0,0,0,0,512836,1669],
+    "FLEX Soluções": [0,0,0,0,0,0,25187,85144,49266,333593,432824,138113,105112,0,0,0,0,0,0,0,0,0,0],
+    "Notre Dame": [0,0,0,0,0,0,0,0,0,38519,0,4423,165147,76979,0,0,0,59709,0,70138,41549,0,0],
+    "CASU-MG": [185533,0,0,0,0,0,0,0,0,0,0,0,184264,0,0,0,0,0,0,0,0,0,0],
+    "Volcanic": [0,0,0,1178,10864,10387,2615,4374,3675,1178,86496,5232,35669,11245,10911,7570,0,0,0,0,0,0,0],
+    "Bradesco Saúde": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,159344,0,0,0,0],
+    "Unimed Nacional": [0,999,1999,3104,51027,0,1199,2463,2719,23976,0,1149,0,3949,3948,0,15888,0,1500,8166,0,1500,1500],
+    "Unimed Teresina": [0,0,0,0,0,0,0,13486,0,44024,0,0,0,0,0,0,53201,0,0,0,0,0,0]
+  },
+  totals: {
+    "Sul América": 6499849,
+    "Ephárma": 3904778,
+    "Unimed CNU": 2533823,
+    "Prevent Senior": 2080952,
+    "Unimed Seguradora": 1731062,
+    "Unimed Vitória": 1647105,
+    "Greens Fito.": 1486208,
+    "Hospital Ana Costa": 1453051,
+    "SAMP": 1239698,
+    "Humana Saúde": 1233136,
+    "FLEX Soluções": 1169243,
+    "Notre Dame": 456468,
+    "CASU-MG": 369798,
+    "Volcanic": 191394,
+    "Bradesco Saúde": 159344,
+    "Unimed Nacional": 125093,
+    "Unimed Teresina": 110712
+  }
+};
+
+const COLORS = [
+  '#00e5a0','#4f8eff','#ff6b6b','#f5c542','#a78bfa','#fb923c',
+  '#34d399','#60a5fa','#f87171','#fbbf24','#c084fc','#4ade80',
+  '#38bdf8','#e879f9','#facc15','#94a3b8','#fb7185'
+];
+
+const gridColor = 'rgba(255,255,255,0.04)';
+const tickColor = '#6b7494';
+const baseFont = { family: "'DM Mono', monospace", size: 10 };
+
+function fmtBRL(v) {
+  if (v >= 1000000) return 'R$ ' + (v/1000000).toFixed(2).replace('.',',') + 'M';
+  if (v >= 1000) return 'R$ ' + (v/1000).toFixed(0) + 'K';
+  return 'R$ ' + v.toFixed(0);
+}
+
+// Chart 1: Total GMV Line
+const ctx1 = document.getElementById('chartTotal').getContext('2d');
+new Chart(ctx1, {
+  type: 'bar',
+  data: {
+    labels: DATA.months,
+    datasets: [{
+      label: 'GMV Total',
+      data: DATA.total,
+      backgroundColor: DATA.total.map(v => {
+        if (v < 600000) return 'rgba(255,107,107,0.7)';
+        if (v < 1000000) return 'rgba(245,197,66,0.7)';
+        return 'rgba(0,229,160,0.7)';
+      }),
+      borderColor: DATA.total.map(v => {
+        if (v < 600000) return '#ff6b6b';
+        if (v < 1000000) return '#f5c542';
+        return '#00e5a0';
+      }),
+      borderWidth: 1,
+      borderRadius: 2,
+    },{
+      label: 'Tendência',
+      data: DATA.total,
+      type: 'line',
+      borderColor: 'rgba(79,142,255,0.6)',
+      borderWidth: 2,
+      pointRadius: 3,
+      pointBackgroundColor: '#4f8eff',
+      tension: 0.35,
+      fill: false,
+      yAxisID: 'y',
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#161b2a',
+        borderColor: '#1e2640',
+        borderWidth: 1,
+        titleColor: '#e8eaf2',
+        bodyColor: '#6b7494',
+        callbacks: {
+          label: ctx => fmtBRL(ctx.parsed.y)
+        }
+      }
+    },
+    scales: {
+      x: { grid: { color: gridColor }, ticks: { color: tickColor, font: baseFont } },
+      y: {
+        grid: { color: gridColor },
+        ticks: { color: tickColor, font: baseFont, callback: v => fmtBRL(v) }
+      }
+    }
+  }
+});
+
+// Chart 2: Ranking horizontal bar
+const opNames = Object.keys(DATA.totals);
+const opVals = Object.values(DATA.totals);
+const ctx2 = document.getElementById('chartRanking').getContext('2d');
+new Chart(ctx2, {
+  type: 'bar',
+  data: {
+    labels: opNames,
+    datasets: [{
+      data: opVals,
+      backgroundColor: COLORS.map(c => c + 'bb'),
+      borderColor: COLORS,
+      borderWidth: 1,
+      borderRadius: 2,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#161b2a',
+        borderColor: '#1e2640',
+        borderWidth: 1,
+        titleColor: '#e8eaf2',
+        bodyColor: '#6b7494',
+        callbacks: { label: ctx => fmtBRL(ctx.parsed.x) }
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: gridColor },
+        ticks: { color: tickColor, font: baseFont, callback: v => fmtBRL(v) }
+      },
+      y: { grid: { display: false }, ticks: { color: tickColor, font: { ...baseFont, size: 10 } } }
+    }
+  }
+});
+
+// Chart 3+: Individual operator cards
+const grid = document.getElementById('opGrid');
+Object.entries(DATA.operators).forEach(([name, vals], i) => {
+  const total = DATA.totals[name];
+  const color = COLORS[i % COLORS.length];
+
+  const card = document.createElement('div');
+  card.className = 'op-card';
+  card.innerHTML = `
+    <div class="op-card-header">
+      <div class="op-name">${name}</div>
+      <div class="op-total">${fmtBRL(total)}</div>
+    </div>
+    <div class="op-chart-wrap"><canvas id="op_${i}"></canvas></div>
+  `;
+  grid.appendChild(card);
+
+  requestAnimationFrame(() => {
+    const ctx = document.getElementById(`op_${i}`).getContext('2d');
+    // detect drops
+    const bgColors = vals.map((v, idx) => {
+      if (idx === 0) return color + '88';
+      const prev = vals[idx-1];
+      if (prev > 0 && v < prev * 0.5) return '#ff6b6b88';
+      return color + '88';
+    });
+
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: DATA.months,
+        datasets: [{
+          data: vals,
+          backgroundColor: bgColors,
+          borderColor: bgColors.map(c => c.replace('88','cc')),
+          borderWidth: 1,
+          borderRadius: 2,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#161b2a',
+            borderColor: '#1e2640',
+            borderWidth: 1,
+            titleColor: '#e8eaf2',
+            bodyColor: '#6b7494',
+            callbacks: { label: ctx => fmtBRL(ctx.parsed.y) }
+          }
+        },
+        scales: {
+          x: { display: false },
+          y: {
+            grid: { color: 'rgba(255,255,255,0.03)' },
+            ticks: { color: '#3a4060', font: { size: 9, family: "'DM Mono', monospace" }, maxTicksLimit: 3, callback: v => fmtBRL(v) }
+          }
+        }
+      }
+    });
+  });
+});
+</script>
+</body>
+</html>
